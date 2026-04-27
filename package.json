@@ -1,5 +1,5 @@
 {
-  "name": "@xmem-space/mcp",
+  "name": "@xmem.space/mcp",
   "version": "1.0.0",
   "description": "MCP Server for xmem \u2014 persistent graph-based memory for AI agents",
   "type": "module",
