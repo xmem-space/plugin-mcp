@@ -2,6 +2,9 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { randomUUID } from "node:crypto";
+import { createServer } from "node:http";
 import { z } from "zod";
 import * as client from "./client.js";
 
@@ -423,9 +426,65 @@ server.resource(
 
 // ── Start ───────────────────────────────────────────────────────────
 
-async function main() {
+// ── Transports ───────────────────────────────────────────────────────
+//
+// Default: stdio (Claude Desktop / Claude Code).
+// XMEM_TRANSPORT=http starts a local StreamableHTTP server so the same
+// toolset is reachable over HTTP (e.g. behind a reverse proxy, or for
+// clients that speak remote MCP). Bind host/port via XMEM_HTTP_HOST/PORT.
+//
+// NOTE: For the hosted claude.ai Connector, users do NOT need this plugin at
+// all — they point the connector directly at https://api.xmem.space/mcp
+// (OAuth discovery is already served there). This http mode is for self-hosted
+// / local-proxy setups.
+
+async function startStdio() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
+}
+
+async function startHttp() {
+  const host = process.env.XMEM_HTTP_HOST || "127.0.0.1";
+  const port = parseInt(process.env.XMEM_HTTP_PORT || "8787", 10);
+
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: () => randomUUID(),
+  });
+  await server.connect(transport);
+
+  const http = createServer((req, res) => {
+    // Minimal open CORS so browser-based MCP clients can reach a local proxy.
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version");
+    res.setHeader("Access-Control-Expose-Headers", "Mcp-Session-Id");
+    if (req.method === "OPTIONS") { res.writeHead(204).end(); return; }
+    if (req.url && req.url.split("?")[0] !== "/mcp") { res.writeHead(404).end(); return; }
+
+    let body = "";
+    req.on("data", (c) => { body += c; });
+    req.on("end", () => {
+      let parsed: unknown;
+      try { parsed = body ? JSON.parse(body) : undefined; } catch { parsed = undefined; }
+      transport.handleRequest(req, res, parsed).catch((err) => {
+        console.error("[xmem-mcp http] request error:", err);
+        if (!res.headersSent) res.writeHead(500).end();
+      });
+    });
+  });
+
+  http.listen(port, host, () => {
+    console.error(`xmem MCP (StreamableHTTP) listening on http://${host}:${port}/mcp`);
+  });
+}
+
+async function main() {
+  const transportMode = (process.env.XMEM_TRANSPORT || "stdio").toLowerCase();
+  if (transportMode === "http") {
+    await startHttp();
+  } else {
+    await startStdio();
+  }
 }
 
 main().catch((err) => {
