@@ -374,6 +374,53 @@ server.resource(
   },
 );
 
+// ── Prompts ─────────────────────────────────────────────────────────
+
+// context prompt — injects the agent's profile-scope memories (agent-self +
+// user-identity) as a ready-to-use system message. Same DX hook Supermemory
+// ships as /context; xmem already has the profile scope, so we just surface it.
+server.registerPrompt(
+  "context",
+  {
+    title: "xmem context",
+    description: "Load agent-self and user-identity profile facts as a system-priming message. Call at the start of a session so the assistant knows who it is and who the user is.",
+  },
+  async () => {
+    const profile = await client.getProfile();
+    const lines = profile.length
+      ? profile.map((p) => `- (${p.source || "?"}/${p.type || "fact"}) ${p.content || p.summary}`).join("\n")
+      : "(no profile facts stored yet)";
+    const text = `# xmem profile context\n\nThe following are durable identity facts from xmem. Treat them as authoritative background about yourself (the assistant) and the user.\n\n${lines}`;
+    return {
+      messages: [
+        { role: "user" as const, content: { type: "text" as const, text } },
+      ],
+    };
+  },
+);
+
+// ── Extra Resources (profile + graph, live-updating) ────────────────
+
+server.resource(
+  "profile",
+  "xmem://profile",
+  { description: "Agent-self + user-identity profile facts (profile scope)", mimeType: "application/json" },
+  async () => {
+    const profile = await client.getProfile();
+    return { contents: [{ uri: "xmem://profile", text: json(profile), mimeType: "application/json" }] };
+  },
+);
+
+server.resource(
+  "graph",
+  "xmem://graph",
+  { description: "Knowledge-graph snapshot (overview + top entities/edges)", mimeType: "application/json" },
+  async () => {
+    const graph = await client.readGraph();
+    return { contents: [{ uri: "xmem://graph", text: json(graph), mimeType: "application/json" }] };
+  },
+);
+
 // ── Start ───────────────────────────────────────────────────────────
 
 async function main() {

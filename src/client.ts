@@ -152,6 +152,29 @@ export function bulletin(params: BulletinParams) {
   });
 }
 
+/**
+ * Fetch the profile-scope memories (agent-self + user-identity) via the
+ * bulletin endpoint's dedicated `profile` block. Returns [] on older servers.
+ */
+export async function getProfile(): Promise<Array<Record<string, unknown>>> {
+  const cfg = getConfig();
+  try {
+    const res = await request("/bulletin", {
+      method: "POST",
+      body: JSON.stringify({ agent: cfg.agentId, topics: ["identity", "profile"], includeProfile: true, limit: 1 }),
+    }) as Record<string, unknown>;
+    const profile = (res?.profile as Array<Record<string, unknown>>) || [];
+    return profile;
+  } catch {
+    return [];
+  }
+}
+
+/** Read a compact graph snapshot (overview + top entities) for MCP resources. */
+export async function readGraph(): Promise<unknown> {
+  return request("/graph/overview").catch(() => request("/stats"));
+}
+
 // ── GraphRAG ────────────────────────────────────────────────────────
 
 export interface GraphRAGParams {
