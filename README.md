@@ -1,4 +1,4 @@
-# @xmem-space/mcp
+# @xmem.space/mcp
 
 MCP (Model Context Protocol) Server for [xmem](https://xmem.space) – persistent memory for AI agents.
 
@@ -7,7 +7,7 @@ Provides 15 tools and 3 resources for storing, searching, and managing memories 
 ## Install
 
 ```bash
-npm install -g @xmem-space/mcp
+npm install -g @xmem.space/mcp
 ```
 
 ## Configuration
@@ -45,7 +45,7 @@ Or with npx (no global install needed):
   "mcpServers": {
     "xmem": {
       "command": "npx",
-      "args": ["-y", "@xmem-space/mcp"],
+      "args": ["-y", "@xmem.space/mcp"],
       "env": {
         "XMEM_API_URL": "http://localhost:18800",
         "MEMTAP_AGENT_ID": "main"
@@ -64,7 +64,7 @@ Add to `.cursor/mcp.json` in your project root:
   "mcpServers": {
     "xmem": {
       "command": "npx",
-      "args": ["-y", "@xmem-space/mcp"],
+      "args": ["-y", "@xmem.space/mcp"],
       "env": {
         "XMEM_API_URL": "http://localhost:18800",
         "MEMTAP_AGENT_ID": "main"
@@ -83,7 +83,7 @@ Add to `~/.claude/settings.json`:
   "mcpServers": {
     "xmem": {
       "command": "npx",
-      "args": ["-y", "@xmem-space/mcp"],
+      "args": ["-y", "@xmem.space/mcp"],
       "env": {
         "XMEM_API_URL": "http://localhost:18800",
         "MEMTAP_AGENT_ID": "main"
