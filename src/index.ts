@@ -7,8 +7,39 @@ import * as client from "./client.js";
 
 const server = new McpServer({
   name: "xmem",
-  version: "1.0.0",
+  version: "1.1.0",
 });
+
+// ── Tool registration with mode-gating + legacy aliases ─────────────
+//
+// XMEM_MODE controls how many tools are exposed:
+//   "core" -> only remember / recall / whoami (less model confusion,
+//             better recall reliability; à la Supermemory).
+//   "full" (default) -> the complete graph/entity/decision toolset.
+//
+// Every tool is registered under its canonical xmem_* name. When
+// XMEM_LEGACY_ALIASES is not "false", the old memtap_* name is also
+// registered so existing integrations keep working (marked DEPRECATED).
+
+const MODE = (process.env.XMEM_MODE || "full").toLowerCase();
+const CORE_MODE = MODE === "core" || MODE === "minimal";
+const LEGACY_ALIASES = (process.env.XMEM_LEGACY_ALIASES || "true").toLowerCase() !== "false";
+const CORE_TOOLS = new Set(["xmem_remember", "xmem_recall", "xmem_whoami"]);
+
+/**
+ * Register a tool under its canonical xmem_* name (+ optional legacy alias).
+ * In core mode, only the three CORE_TOOLS are exposed.
+ */
+function tool(name: string, description: string, schema: any, handler: any): void {
+  if (CORE_MODE && !CORE_TOOLS.has(name)) return;
+  (server.tool as any)(name, description, schema, handler);
+  if (LEGACY_ALIASES) {
+    const legacy = name.replace(/^xmem_/, "xmem_");
+    if (legacy !== name) {
+      (server.tool as any)(legacy, `[DEPRECATED alias of ${name}] ${description}`, schema, handler);
+    }
+  }
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -28,8 +59,15 @@ async function run<T>(fn: () => Promise<T>): Promise<{ content: Array<{ type: "t
 
 // ── Tools ───────────────────────────────────────────────────────────
 
-server.tool(
-  "memtap_remember",
+tool(
+  "xmem_whoami",
+  "Verify the xmem connection: returns the authenticated space, tier, agent, API-key status and server URL. Use this FIRST if memory calls fail, to confirm your API key and space binding.",
+  {},
+  async () => run(() => client.whoami()),
+);
+
+tool(
+  "xmem_remember",
   "Store a new memory in xmem. Use this to persist facts, decisions, preferences, observations, events, goals, or tasks.",
   {
     type: z.enum(["fact", "preference", "decision", "identity", "event", "observation", "goal", "task"]).describe("Memory type"),
@@ -40,11 +78,11 @@ server.tool(
     entities: z.array(z.string()).optional().describe("Entity names to link (auto-creates nodes)"),
     summary: z.string().optional().describe("Short summary (auto-generated if omitted)"),
   },
-  async (params) => run(() => client.createMemory(params)),
+  async (params: any) => run(() => client.createMemory(params)),
 );
 
-server.tool(
-  "memtap_recall",
+tool(
+  "xmem_recall",
   "Search memories by text query. Returns ranked results with relevance scores.",
   {
     q: z.string().describe("Search query"),
@@ -52,21 +90,21 @@ server.tool(
     types: z.string().optional().describe("Comma-separated type filter, e.g. 'fact,decision'"),
     minImportance: z.number().optional().describe("Minimum importance threshold (0-1)"),
   },
-  async (params) => run(() => client.recall(params)),
+  async (params: any) => run(() => client.recall(params)),
 );
 
-server.tool(
-  "memtap_bulletin",
+tool(
+  "xmem_bulletin",
   "Get context-aware memory retrieval. Provide a description of what you are working on and get the most relevant memories.",
   {
     context: z.string().describe("Description of current context or task"),
     limit: z.number().optional().describe("Max results (default: 5)"),
   },
-  async (params) => run(() => client.bulletin(params)),
+  async (params: any) => run(() => client.bulletin(params)),
 );
 
-server.tool(
-  "memtap_graphrag",
+tool(
+  "xmem_graphrag",
   "Deep knowledge retrieval combining search with multi-hop graph traversal. Best for complex questions that need connecting multiple memories.",
   {
     query: z.string().describe("Natural language search query"),
@@ -74,11 +112,11 @@ server.tool(
     graphDepth: z.number().optional().describe("Max graph traversal hops (default: 2)"),
     maxResults: z.number().optional().describe("Max total results (default: 20)"),
   },
-  async (params) => run(() => client.graphrag(params)),
+  async (params: any) => run(() => client.graphrag(params)),
 );
 
-server.tool(
-  "memtap_graph",
+tool(
+  "xmem_graph",
   "Explore the knowledge graph: traverse from a node, find connections between memories, detect gaps, discover clusters, or get an overview.",
   {
     action: z.enum(["traverse", "connections", "gaps", "clusters", "overview"]).describe("Graph operation to perform"),
@@ -88,7 +126,7 @@ server.tool(
     from: z.string().optional().describe("Source memory ID (for 'connections')"),
     to: z.string().optional().describe("Target memory ID (for 'connections')"),
   },
-  async (params) => {
+  async (params: any) => {
     switch (params.action) {
       case "traverse":
         if (!params.start) return { content: [{ type: "text" as const, text: "Error: 'start' is required for traverse" }] };
@@ -106,8 +144,8 @@ server.tool(
   },
 );
 
-server.tool(
-  "memtap_decide",
+tool(
+  "xmem_decide",
   "Manage decisions: create, list, resolve, or defer decisions.",
   {
     action: z.enum(["create", "list", "resolve", "defer"]).describe("Decision action"),
@@ -122,7 +160,7 @@ server.tool(
     newDeadline: z.string().optional().describe("New deadline (for 'defer')"),
     status: z.string().optional().describe("Filter by status (for 'list')"),
   },
-  async (params) => {
+  async (params: any) => {
     switch (params.action) {
       case "create":
         if (!params.content) return { content: [{ type: "text" as const, text: "Error: 'content' is required" }] };
@@ -144,8 +182,8 @@ server.tool(
   },
 );
 
-server.tool(
-  "memtap_memory",
+tool(
+  "xmem_memory",
   "Get, update, or delete a specific memory by ID.",
   {
     action: z.enum(["get", "update", "delete"]).describe("Action to perform"),
@@ -158,7 +196,7 @@ server.tool(
     archived: z.boolean().optional().describe("Archive flag (for 'update')"),
     hard: z.boolean().optional().describe("Hard delete instead of archive (for 'delete')"),
   },
-  async (params) => {
+  async (params: any) => {
     switch (params.action) {
       case "get":
         return run(() => client.getMemory(params.id));
@@ -178,8 +216,8 @@ server.tool(
   },
 );
 
-server.tool(
-  "memtap_entities",
+tool(
+  "xmem_entities",
   "List entities, get memories linked to an entity, or merge duplicate entities.",
   {
     action: z.enum(["list", "memories", "merge"]).describe("Entity action"),
@@ -188,7 +226,7 @@ server.tool(
     limit: z.number().optional().describe("Max results"),
     mergeFrom: z.string().optional().describe("Entity to merge into target (for 'merge')"),
   },
-  async (params) => {
+  async (params: any) => {
     switch (params.action) {
       case "list":
         return run(() => client.listEntities({ type: params.type, limit: params.limit }));
@@ -202,8 +240,8 @@ server.tool(
   },
 );
 
-server.tool(
-  "memtap_edges",
+tool(
+  "xmem_edges",
   "Create a relationship (edge) between two memories.",
   {
     from: z.string().describe("Source memory ID"),
@@ -211,24 +249,24 @@ server.tool(
     type: z.enum(["RELATED_TO", "UPDATES", "CONTRADICTS", "CAUSED_BY", "PART_OF", "DEPENDS_ON", "MENTIONS"]).describe("Edge type"),
     weight: z.number().min(0).max(1).optional().describe("Edge weight 0-1 (default: 0.5)"),
   },
-  async (params) => run(() => client.createEdge(params)),
+  async (params: any) => run(() => client.createEdge(params)),
 );
 
-server.tool(
-  "memtap_health",
+tool(
+  "xmem_health",
   "Check xmem server health and connection status.",
   {},
   async () => run(() => client.health()),
 );
 
-server.tool(
-  "memtap_maintenance",
+tool(
+  "xmem_maintenance",
   "Run maintenance tasks: decay report, contradiction detection, duplicate scan, or full maintenance.",
   {
     action: z.enum(["decay", "contradictions", "dedup", "run-all"]).describe("Maintenance action"),
     limit: z.number().optional().describe("Max results (for 'decay'/'dedup')"),
   },
-  async (params) => {
+  async (params: any) => {
     switch (params.action) {
       case "decay":
         return run(() => client.decayReport(params.limit));
@@ -242,27 +280,27 @@ server.tool(
   },
 );
 
-server.tool(
-  "memtap_consolidate",
+tool(
+  "xmem_consolidate",
   "Run full maintenance consolidation: decay analysis, contradiction detection, and duplicate scanning in one call.",
   {},
   async () => run(() => client.runAllMaintenance()),
 );
 
-server.tool(
-  "memtap_export",
+tool(
+  "xmem_export",
   "Export memory statistics including counts by type and agent.",
   {},
   async () => run(() => client.stats()),
 );
 
-server.tool(
-  "memtap_profile",
+tool(
+  "xmem_profile",
   "Get the memory profile for a specific agent – statistics and breakdown.",
   {
     agentId: z.string().optional().describe("Agent ID (defaults to configured MEMTAP_AGENT_ID)"),
   },
-  async (params) => {
+  async (params: any) => {
     const agentId = params.agentId || client.getConfig().agentId;
     return run(async () => {
       const s = await client.stats() as Record<string, unknown>;
@@ -280,8 +318,8 @@ server.tool(
   },
 );
 
-server.tool(
-  "memtap_categories",
+tool(
+  "xmem_categories",
   "List all memory categories (types) with their counts.",
   {},
   async () => {

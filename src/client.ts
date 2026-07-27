@@ -54,6 +54,33 @@ export function health() {
   return request("/health");
 }
 
+/**
+ * whoami — verify auth + resolve the current space/tier/agent binding.
+ * Used for setup debugging ("is my key working, which space am I in?").
+ */
+export async function whoami(): Promise<Record<string, unknown>> {
+  const cfg = getConfig();
+  const result: Record<string, unknown> = {
+    apiUrl: cfg.apiUrl,
+    agentId: cfg.agentId,
+    apiKeyPresent: Boolean(cfg.apiKey),
+    apiKeyPrefix: cfg.apiKey ? cfg.apiKey.slice(0, 8) + "…" : null,
+    mode: (process.env.XMEM_MODE || "full").toLowerCase(),
+  };
+  try {
+    // /me returns the authenticated space + tier when the key is valid.
+    const me = await request("/me");
+    result.authenticated = true;
+    result.identity = me;
+  } catch (err) {
+    // Fall back to /health so whoami still returns something useful.
+    result.authenticated = false;
+    result.authError = err instanceof Error ? err.message : String(err);
+    try { result.serverHealth = await request("/health"); } catch { /* ignore */ }
+  }
+  return result;
+}
+
 export function stats() {
   return request("/stats");
 }
