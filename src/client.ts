@@ -138,6 +138,28 @@ export function recall(params: RecallParams) {
   return request(`/recall${qs({ agent: cfg.agentId, ...params })}`);
 }
 
+/**
+ * Multi-signal fused recall (BM25 + importance + recency + graph-proximity).
+ * Superseded facts are filtered server-side. Falls back to classic /recall on
+ * older servers that don't expose /recall/fused.
+ */
+export async function recallFused(params: RecallParams & { maxDepth?: number }) {
+  const cfg = getConfig();
+  try {
+    return await request(`/recall/fused`, {
+      method: "POST",
+      body: JSON.stringify({
+        agent: cfg.agentId,
+        q: params.q,
+        limit: params.limit ?? 6,
+        maxDepth: params.maxDepth ?? 2,
+      }),
+    });
+  } catch {
+    return recall(params);
+  }
+}
+
 export interface BulletinParams {
   context: string;
   agent?: string;
