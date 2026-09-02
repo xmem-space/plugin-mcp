@@ -99,9 +99,8 @@ gemeinsame Standard). Es muss nichts pro Anbieter neu gebaut werden.
 - [x] **Domain-Verification-Pfad** `https://xmem.space/.well-known/openai-apps-challenge`
       liefert bereits 200 (Root-Domain kontrolliert → kein Subpath-Problem).
       OpenAI legt hier beim Submit ihren Challenge-Token ab.
-- [ ] **Content Security Policy** für den MCP-Server angeben (Formularfeld).
-- [ ] **Demo-Credentials** bereitstellen, falls Reviewer einen Test-Login braucht
-      (Vorschlag: dedizierter Demo-xmem-Account mit ein paar Beispiel-Memories).
+- [x] **Content Security Policy** für den MCP-Server (Server v12): `default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'` + `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, HSTS, `Cross-Origin-Resource-Policy: same-origin`. Live verifiziert auf `api.xmem.space/mcp`.
+- [x] **Demo-Credentials** angelegt: `demo@xmem.space` (Pro-Tier), 6 Beispiel-Memories (fiktive Firma "Acme Robotics"). API-Key + Nutzung liegen in `~/.openclaw/workspace/.secure/demo-account.txt` (chmod 600, NICHT im Repo/Chat).
 - [ ] Starter Prompts + mind. 1–2 Test Cases + Country Availability + Policy-Attestations.
 
 ### Wichtige Hinweise (aus der offiziellen Doku)
@@ -124,8 +123,7 @@ gemeinsame Standard). Es muss nichts pro Anbieter neu gebaut werden.
 - OpenAI: Org-Rolle "Apps Management" + Business-Verification (psifactory LLC).
 - Beide: finale Freigabe der Listing-Texte oben.
 
-## 4. Was ich (Agent) noch vorbereiten kann
-- Privacy-Policy-Abschnitt zu Connector-Datenverarbeitung + Löschung ergänzen
-  (nach deinem OK, ist Struktur-/Text-Änderung auf der Seite).
-- Demo-xmem-Account mit Beispiel-Memories für OpenAI-Review anlegen.
-- Content Security Policy Header für `api.xmem.space/mcp` definieren.
+## 4. Vorbereitung durch Agent — ERLEDIGT (2026-09-02)
+- [x] Privacy-Policy erweitert: neuer Abschnitt 3.4 "Connector / MCP integrations" (was autorisiert wird, welche Daten fließen, was gespeichert wird, Löschung via `delete_memory`), Retention-Sektion um Connector-Daten ergänzt, rev. 3. Live (Frontend v99).
+- [x] Demo-Account `demo@xmem.space` mit 6 Memories angelegt; Creds in `.secure/demo-account.txt`.
+- [x] CSP + Security-Header für `api.xmem.space/mcp` (Server v12), live verifiziert.
