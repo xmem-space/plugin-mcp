@@ -1,4 +1,4 @@
-# xmem MCP Connector — Submission Dossier (Anthropic + OpenAI)
+# xmem MCP Connector — Submission Dossier (Anthropic + OpenAI + Google/Gemini)
 
 **Stand:** 2026-09-02 · Connector technisch fertig & live · Tool-Annotations deployed (Server v11)
 
@@ -118,10 +118,42 @@ gemeinsame Standard). Es muss nichts pro Anbieter neu gebaut werden.
 
 ---
 
+## 2b. Google / Gemini — KEIN einheitliches Directory (3 getrennte Wege)
+
+**Wichtig:** Google hat **kein zentrales, offizielles MCP-Listing** wie Anthropic/OpenAI, wo man einmal einreicht und dann plattformweit gelistet ist. Es gibt **drei getrennte Oberflächen** mit sehr unterschiedlichem Aufwand. Technisch sind wir für alle drei bereit (derselbe Endpoint `api.xmem.space/mcp`, Streamable HTTP + OAuth, live verifiziert).
+
+### Weg 1 — Gemini CLI Extensions Gallery (self-serve, EMPFOHLEN als erster Schritt)
+- **Was:** Öffentliches Git-Repo mit `gemini-extension.json`-Manifest, das unseren MCP-Server deklariert; Eintrag in die Extensions-Gallery (`geminicliextensions.com`).
+- **Aufwand:** gering, **selbst-bedienbar**, kein Google-Approval/Partnership nötig.
+- **User-Install danach:** `gemini extensions install <repo>` (1 Kommando).
+- **⚠️ Risiko/Caveat:** Google hat angekündigt, die kostenlose/Pro/Ultra-Nutzung der Gemini CLI am **18.06.2026** einzustellen und Richtung **Antigravity CLI** zu migrieren. Die Gallery ist zudem **unvetted** (kein Qualitäts-Review = kein Vertrauens-Badge). → Gute, billige Reichweite, aber **kein stabiler Langzeit-Kanal**. Vor Aufwand prüfen, ob die Gallery/CLI nach der Migration noch der richtige Ort ist.
+- **To do (Agent-Seite, vorbereitbar):** `gemini-extension.json` schreiben (Manifest zeigt auf `httpUrl: https://api.xmem.space/mcp`), eigenes öffentliches Repo (z.B. `xmem-space/gemini-extension`) anlegen, in Gallery listen. Wegen API-Vertrag/Branding vorher Sebbo-OK.
+
+### Weg 2 — Gemini Enterprise (ehem. Agentspace) „Agent Registry" (customer-side, KEIN Publish für uns)
+- **Was:** Seit **25.06.2026** gibt es in Gemini Enterprise eine **Agent Registry** — ein Katalog von Agents + Custom-MCP-Servern. **Aber:** Jeder Enterprise-**Kunde** fügt seinen Custom-MCP-Server selbst hinzu (Streamable HTTP, OAuth/SA-Token). Es ist **kein zentrales Marketplace-Listing**, das wir einreichen — es ist eine Self-Connect-Fähigkeit auf Kundenseite.
+- **Bedeutung für uns:** Wir müssen hier **nichts einreichen**. Enterprise-Kunden können xmem bereits heute selbst anbinden. Wir liefern nur eine **Anleitung** (Doku-Seite reicht) + ggf. Support für OAuth-Setup.
+- **Bekannte Stolpersteine (aus Google-Community, Stand Jul/Aug 2026):** „Reload custom actions" schlägt teils mit 401 fehl (UI nutzt API-Key statt OAuth-Token); Token-Refresh feuert pro Chat-Turn. → In unserer Doku klar auf **OAuth statt statischem Key** hinweisen.
+
+### Weg 3 — Consumer Gemini App „Spark"-Connectors (partnership-only, NICHT self-serve)
+- **Was:** Die Consumer-Gemini-App (Spark-Agent, Google I/O 2026) bindet externe Tools über MCP ein — **aber es gibt kein öffentliches Formular**. Die ausgelieferten Connectors sind **ausgehandelte Partnerschaften**.
+- **Bedeutung für uns:** Nur über **Google-Partnerships** erreichbar. Für jetzt **außer Reichweite** — vormerken als Ziel, wenn xmem Traktion hat und ein Partnership-Kontakt entsteht.
+
+### Zusammenfassung Gemini
+| Weg | Self-serve? | Aufwand | Für uns jetzt? |
+|---|---|---|---|
+| CLI Extensions Gallery | ✅ ja | gering (Repo + Manifest) | ⚠️ ja, aber Migrations-Risiko (Antigravity ab 18.06.2026) prüfen |
+| Gemini Enterprise Agent Registry | Kunden-seitig | nur Doku | ✅ nichts einzureichen — Doku + OAuth-Hinweis reicht |
+| Consumer Spark | ❌ partnership-only | hoch (Deal) | ❌ später, via Partnerships |
+
+**Netto:** Für Gemini gibt es kein „einreichen und fertig". Kurzfristig sinnvoll: (1) unsere Gemini-CLI-Doku (bereits live: `/docs/integrations/gemini`), (2) optional eine CLI-Extension in die Gallery (nach Risiko-Check + Sebbo-OK), (3) Enterprise-Kunden self-connect via Doku. Consumer-Spark nur über Google-Partnership.
+
+---
+
 ## 3. Was NUR du tun kannst (Account/Assets)
 - Anthropic: paid Claude-Plan + In-App-Submit.
 - OpenAI: Org-Rolle "Apps Management" + Business-Verification (psifactory LLC).
-- Beide: finale Freigabe der Listing-Texte oben.
+- Gemini: kein Submit nötig für Enterprise/CLI-Nutzung; falls CLI-Extension-Gallery gewünscht → Repo-Anlage + Sebbo-OK (Branding/API-Vertrag). Consumer-Spark = Google-Partnership (Business-Entscheidung).
+- Alle: finale Freigabe der Listing-Texte oben.
 
 ## 4. Vorbereitung durch Agent — ERLEDIGT (2026-09-02)
 - [x] Privacy-Policy erweitert: neuer Abschnitt 3.4 "Connector / MCP integrations" (was autorisiert wird, welche Daten fließen, was gespeichert wird, Löschung via `delete_memory`), Retention-Sektion um Connector-Daten ergänzt, rev. 3. Live (Frontend v99).
